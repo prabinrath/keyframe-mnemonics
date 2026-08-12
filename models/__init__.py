@@ -47,6 +47,21 @@ def _get_mikasa_robo_policy():
     return MikasaRoboPolicy
 
 
+def _get_real_robot_selector():
+    from .real_robot_model import SelectorFeatureExtractor
+    return SelectorFeatureExtractor
+
+
+def _get_real_robot_proxy():
+    from .real_robot_model import ProxyModel
+    return ProxyModel
+
+
+def _get_real_robot_policy():
+    from .real_robot_model import RealRobotPolicy
+    return RealRobotPolicy
+
+
 def _get_add_selector():
     from .add_model import SelectorFeatureExtractor
     return SelectorFeatureExtractor
@@ -102,6 +117,11 @@ model_dict = _LazyDict(
         selector=_get_mikasa_robo_selector,
         proxy=_get_mikasa_robo_proxy,
         policy=_get_mikasa_robo_policy,
+    ),
+    real_robot=dict(
+        selector=_get_real_robot_selector,
+        proxy=_get_real_robot_proxy,
+        policy=_get_real_robot_policy,
     ),
     add=dict(
         selector=_get_add_selector,

@@ -10,7 +10,8 @@ from models.common import NoInitWrapper
 class FlowMatchingPolicy(nn.Module):
     def __init__(self, output_dim, total_slots, hidden_dim=256,
                  attn_heads=4, horizon=8, num_layers=4,
-                 num_inference_steps=5, state_dim=9, image_size=128, **kwargs):
+                 num_inference_steps=5, state_dim=9, image_size=128,
+                 camera_names=("overhead_camera", "gripper_camera"), **kwargs):
         super().__init__()
 
         self.output_dim = output_dim
@@ -22,6 +23,7 @@ class FlowMatchingPolicy(nn.Module):
         self.num_inference_steps = num_inference_steps
         self.state_dim = state_dim
         self.image_size = image_size
+        self.camera_names = tuple(camera_names)
         # ResNet-18 downsamples by 32x, giving (image_size//32)^2 spatial patches
         self.spatial_patches = (image_size // 32) ** 2
 
@@ -42,11 +44,10 @@ class FlowMatchingPolicy(nn.Module):
         self.state_norm = nn.LayerNorm(self.hidden_dim)
 
         # Calculate number of tokens:
-        # - Visual tokens: spatial_patches per camera (overhead + gripper = 2 cameras)
+        # - Visual tokens: spatial_patches per camera per buffer slot
         # - State token: 1 (single token)
-        # - Total context: total_slots * spatial_patches * 2 + 1
         # - Action queries: horizon tokens (noisy actions)
-        visual_tokens = self.total_slots * self.spatial_patches * 2
+        visual_tokens = self.total_slots * self.spatial_patches * len(self.camera_names)
         context_len = visual_tokens + 1
 
         # Positional embeddings for context and action tokens (scaled for stable init)
@@ -82,47 +83,42 @@ class FlowMatchingPolicy(nn.Module):
 
         Args:
             observations: Dict with keys:
-                - observation.images.overhead_camera{i}: float32 tensor (B, 3, H, W) for i=1..total_slots
-                - observation.images.gripper_camera{i}: float32 tensor (B, 3, H, W) for i=1..total_slots
+                - observation.images.{name}{i}: float32 tensor (B, 3, H, W) for each
+                  name in camera_names and i=1..total_slots
                 - observation.state: float32 tensor (B, state_dim)
         """
         B = observations['observation.state'].shape[0]
         H = W = self.image_size
         P = self.spatial_patches  # patches per camera
+        C = len(self.camera_names)
 
-        # Collect all camera images from buffers
-        overhead_cameras = []
-        gripper_cameras = []
-
-        for i in range(1, self.total_slots + 1):
-            gripper_cam = observations[f'observation.images.gripper_camera{i}'].contiguous(memory_format=torch.channels_last)
-            gripper_cameras.append(gripper_cam)
-
-            overhead_cam = observations[f'observation.images.overhead_camera{i}'].contiguous(memory_format=torch.channels_last)
-            overhead_cameras.append(overhead_cam)
-
-        # Stack cameras: B x T x 3 x H x W, then flatten to (B*T) x 3 x H x W
-        gripper_cameras = torch.stack(gripper_cameras, dim=1).reshape(B * self.total_slots, 3, H, W)
-        overhead_cameras = torch.stack(overhead_cameras, dim=1).reshape(B * self.total_slots, 3, H, W)
+        # Camera-major: all slots of camera 0, then all slots of camera 1, ...
+        per_camera = []
+        for name in self.camera_names:
+            slots = [
+                observations[f'observation.images.{name}{i}'].contiguous(memory_format=torch.channels_last)
+                for i in range(1, self.total_slots + 1)
+            ]
+            per_camera.append(torch.stack(slots, dim=1).reshape(B * self.total_slots, 3, H, W))
 
         # Extract state
         state = observations['observation.state']  # B x state_dim
 
-        # Process both cameras together through ResNet: (2*B*T) x 3 x H x W
-        both_cameras = torch.cat([overhead_cameras, gripper_cameras], dim=0)
-        all_feats = self.resnet_features(both_cameras)  # (2*B*T) x 512 x sqrt(P) x sqrt(P)
+        # Process all cameras together through ResNet: (C*B*T) x 3 x H x W
+        all_cameras = torch.cat(per_camera, dim=0)
+        all_feats = self.resnet_features(all_cameras)  # (C*B*T) x 512 x sqrt(P) x sqrt(P)
 
-        # Convert to tokens: (2*B*T) x P x hidden_dim
+        # Convert to tokens: (C*B*T) x P x hidden_dim
         all_tokens = all_feats.flatten(2).permute(0, 2, 1)
         all_tokens = self.resnet_to_hidden(all_tokens)
         all_tokens = self.resnet_norm(all_tokens)
 
-        # Reshape to separate overhead and gripper: B x T x (2*P) x hidden_dim
-        all_tokens = all_tokens.view(2, B * self.total_slots, P, self.hidden_dim).permute(1, 0, 2, 3)
-        all_tokens = all_tokens.reshape(B * self.total_slots, 2 * P, self.hidden_dim)
-        camera_tokens = all_tokens.view(B, self.total_slots, 2 * P, self.hidden_dim)
+        # Regroup by buffer slot: B x T x (C*P) x hidden_dim
+        all_tokens = all_tokens.view(C, B * self.total_slots, P, self.hidden_dim).permute(1, 0, 2, 3)
+        all_tokens = all_tokens.reshape(B * self.total_slots, C * P, self.hidden_dim)
+        camera_tokens = all_tokens.view(B, self.total_slots, C * P, self.hidden_dim)
 
-        # Flatten camera tokens: B x (total_slots * P * 2) x hidden_dim
+        # Flatten camera tokens: B x (total_slots * P * C) x hidden_dim
         camera_tokens = camera_tokens.flatten(1, 2)
 
         # Project state to a single token
@@ -221,14 +217,15 @@ class SingleStepTransformerPolicy(nn.Module):
     """Transformer policy that predicts a single action (horizon=1).
 
     Observations are dicts with keys:
-        - observation.images.overhead_camera{i}: float32 tensor (B, 3, H, W) for i=1..total_slots
-        - observation.images.gripper_camera{i}: float32 tensor (B, 3, H, W) for i=1..total_slots
+        - observation.images.{name}{i}: float32 tensor (B, 3, H, W) for each name in
+          camera_names and i=1..total_slots
         - observation.state: float32 tensor (B, state_dim)
     """
 
     def __init__(self, output_dim, total_slots, hidden_dim=256,
                  attn_heads=4, horizon=1,
-                 num_layers=4, device="cuda", state_dim=9, image_size=128, **kwargs):
+                 num_layers=4, device="cuda", state_dim=9, image_size=128,
+                 camera_names=("overhead_camera", "gripper_camera"), **kwargs):
         super().__init__()
 
         self.output_dim = output_dim
@@ -239,6 +236,7 @@ class SingleStepTransformerPolicy(nn.Module):
         self.device = device
         self.state_dim = state_dim
         self.image_size = image_size
+        self.camera_names = tuple(camera_names)
         # ResNet-18 downsamples by 32x, giving (image_size//32)^2 spatial patches
         self.spatial_patches = (image_size // 32) ** 2
         assert horizon == 1, "SingleStepTransformerPolicy must have horizon=1"
@@ -258,7 +256,7 @@ class SingleStepTransformerPolicy(nn.Module):
 
         # Positional embeddings for camera tokens: per-camera-slot and per-spatial-patch.
         # Camera slot captures temporal position + camera identity; spatial patch captures 2D location in feature map.
-        n_cams = total_slots * 2  # overhead + gripper per buffer slot
+        n_cams = total_slots * len(self.camera_names)
         self.camera_slot_embedding = nn.Parameter(torch.randn(1, n_cams, self.hidden_dim) * 0.02)
         self.spatial_patch_embedding = nn.Parameter(torch.randn(1, self.spatial_patches, self.hidden_dim) * 0.02)
 
@@ -279,7 +277,7 @@ class SingleStepTransformerPolicy(nn.Module):
     def encode_context(self, observations):
         """Encode dict observations into context tokens.
 
-        Collects all camera images (overhead + gripper across all buffer steps) and
+        Collects all camera images (every camera across all buffer steps) and
         processes them through ResNet. Each camera token receives a camera-slot
         embedding (temporal position + camera identity) and a spatial-patch embedding
         (2D location in the ResNet feature map). Appends a single state token.
@@ -291,11 +289,11 @@ class SingleStepTransformerPolicy(nn.Module):
         H = W = self.image_size
         P = self.spatial_patches  # patches per camera
 
-        # Collect all cameras as tensors (overhead + gripper per buffer slot)
+        # Slot-major: every camera of slot 1, then every camera of slot 2, ...
         cameras = []
         for i in range(1, self.total_slots + 1):
-            cameras.append(observations[f'observation.images.overhead_camera{i}'])
-            cameras.append(observations[f'observation.images.gripper_camera{i}'])
+            for name in self.camera_names:
+                cameras.append(observations[f'observation.images.{name}{i}'])
 
         # Process all cameras through ResNet in one batch
         cam_tensors = torch.stack(cameras, dim=1)                                      # B x N_cams x 3 x H x W

@@ -57,6 +57,16 @@ def _get_mikasa_robo_policy_evaluator():
     return MikasaPolicyEvaluator
 
 
+def _get_real_robot_problem():
+    from .real_robot_problem import RealRobotProblem
+    return RealRobotProblem
+
+
+def _get_real_robot_policy_dataset_generator():
+    from .real_robot_problem.generate_policy_dataset import generate
+    return generate
+
+
 def _get_ltmb_problem():
     from .ltmb_problem import LTMBProblem
     return LTMBProblem
@@ -147,5 +157,12 @@ problem_dict = _LazyDict(
         evaluator=_get_mikasa_robo_evaluator,
         policy_evaluator=_get_mikasa_robo_policy_evaluator,
         policy_dataset_generator=_get_mikasa_robo_policy_dataset_generator,
+    ),
+    # No evaluators: a real robot cannot be stepped programmatically, so the
+    # configs omit the evaluator blocks and eval happens on hardware through
+    # the LeRobot plugin.
+    real_robot=dict(
+        problem=_get_real_robot_problem,
+        policy_dataset_generator=_get_real_robot_policy_dataset_generator,
     )
 )

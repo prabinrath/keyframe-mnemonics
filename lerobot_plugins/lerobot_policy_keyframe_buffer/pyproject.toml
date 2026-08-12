@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lerobot_policy_keyframe_buffer"
+version = "0.1.0"
+description = "Keyframe Mnemonics selector + memory buffer wrapping any LeRobot policy"
+requires-python = ">= 3.12"
+license = "CC-BY-NC-SA-4.0"
+authors = [{ name = "Prabin Kumar Rath", email = "prath4@asu.edu" }]
+
+dependencies = ["keyframe-mnemonics", "stable-baselines3<2.8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

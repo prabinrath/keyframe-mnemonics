@@ -1,0 +1,69 @@
+logging: &logging False
+path_prefix: &path_prefix ""
+
+pipeline:
+  proxy_dataset: demos
+  policy_dataset: lerobot
+
+problem:
+  env_id: "remember_color_2"
+  split: "train"
+  action_dim: 8
+  buffer_size: &buffer_size 3
+  num_variations: null # use all trajectories in the H5
+  randomize_reset: True
+  horizon: &horizon 8
+  path_prefix: *path_prefix
+
+policy_problem_override:
+  buffer_size: 2
+
+selector_env:
+  n_envs: 32
+  action_penalty: 0.0
+  min_loss: 0.00001
+
+selector:
+  total_timesteps: 1000000
+  ent_coef: 0.01
+  n_steps: 1024
+  batch_size: 256
+  n_epochs: 5
+  learning_rate: 0.00005
+  logging: *logging
+  net_arch: [500, 500]
+  features_extractor_kwargs:
+    hidden_dim: 256
+    features_dim: 128
+
+proxy:
+  batch_size: 128
+  learning_rate: 0.0001
+  weight_decay: 0.0
+  training_epochs: 60
+  save_interval: 20
+  model_kwargs:
+    total_slots: *buffer_size
+    hidden_dim: 512
+    attn_heads: 4
+    num_layers: 4
+    horizon: *horizon
+
+policy:
+  batch_size: 64
+  learning_rate: 0.00005
+  training_steps: 40000
+  save_interval: 10000
+  weight_decay: 0.05
+  open_loop_steps: 8
+  queue_kwargs:
+    rejection_threshold: 0.5
+    no_repeat_threshold: 0.05
+  model_kwargs:
+    policy_type: "flow_matching_dit"
+    total_slots: 3
+    hidden_dim: 1024
+    attn_heads: 16
+    num_layers: 4
+    horizon: *horizon
+    num_inference_steps: 5

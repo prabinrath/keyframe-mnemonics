@@ -74,7 +74,7 @@ Run every command from the repository root.
 | `tmaze`, `add`, `scattered_copy` | generated on the fly, no external data |
 | `ltmb` | expert demos generated locally — [`problems/ltmb_problem/README.md`](problems/ltmb_problem/README.md) |
 | `mikasa_robo` | demos downloaded and converted to a proxy H5 — [`problems/mikasa_robo_problem/README.md`](problems/mikasa_robo_problem/README.md) |
-| `real_robot` | a collected LeRobot dataset converted to a proxy H5 — see `problems/real_robot_problem/README.md` on the [`lerobot`](https://github.com/prabinrath/keyframe-mnemonics/tree/lerobot) branch |
+| `real_robot` | a collected LeRobot dataset converted to a proxy H5 — [`problems/real_robot_problem/README.md`](problems/real_robot_problem/README.md) |
 
 ## ⚙️ Training
 <div align="center">
@@ -124,6 +124,7 @@ python rollout/tmaze/test_selector.py --checkpoint_path tmaze_<TAG>
 # Evaluate selector + policy end-to-end on task metrics.
 python rollout/tmaze/eval_policy.py --policy_checkpoint tmaze_<TAG>
 ```
+`real_robot` has only `test_selector.py` — its policies are evaluated on hardware through the LeRobot plugin.
 
 ## 🧭 Domains
 | Domain | Config | Proxy dataset | Policy dataset |

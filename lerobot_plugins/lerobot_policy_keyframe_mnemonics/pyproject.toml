@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lerobot_policy_keyframe_mnemonics"
+version = "0.1.0"
+description = "Keyframe Mnemonics as a LeRobot policy plugin (selector + memory buffer + policy)"
+requires-python = ">= 3.12"
+license = "CC-BY-NC-SA-4.0"
+authors = [{ name = "Prabin Kumar Rath", email = "prath4@asu.edu" }]
+
+# The lerobot_policy_ prefix is load-bearing: lerobot.utils.import_utils
+# .register_third_party_plugins() discovers plugins by that distribution-name prefix.
+dependencies = ["keyframe-mnemonics", "stable-baselines3<2.8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
