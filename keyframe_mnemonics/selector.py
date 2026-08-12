@@ -234,22 +234,21 @@ class VectorizedSelectorEnv(VecEnv):
         pass
     
     def env_method(self, method_name, *args, indices=None, **kwargs):
-        indices = indices or range(self.n_envs)
+        indices = self._get_indices(indices)
         return [getattr(self.processes[i], method_name)(*args, **kwargs) for i in indices]
-    
+
     def env_is_wrapped(self, wrapper_class, indices=None):
-        return [False] * (len(indices) if indices else self.n_envs)
-    
+        return [False] * len(list(self._get_indices(indices)))
+
     def get_attr(self, attr_name, indices=None):
-        indices = indices or range(self.n_envs)
+        indices = list(self._get_indices(indices))
         # Handle render_mode
         if attr_name == "render_mode":
-            return [None] * len(list(indices))
+            return [None] * len(indices)
         return [getattr(self.processes[i], attr_name) for i in indices]
-    
+
     def set_attr(self, attr_name, value, indices=None):
-        indices = indices or range(self.n_envs)
-        for i in indices:
+        for i in self._get_indices(indices):
             setattr(self.processes[i], attr_name, value)
     
     def seed(self, seed=None):

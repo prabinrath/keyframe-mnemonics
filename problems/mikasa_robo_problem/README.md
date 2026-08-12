@@ -1,7 +1,7 @@
 # MIKASA-Robo data preparation
 
 Expert demos for the `mikasa_robo` proxy stage, from the
-[MIKASA-Robo](https://github.com/CognitiveAISystems/MIKASA-Robo) project — one zip per
+[MIKASA-Robo](https://github.com/CognitiveAISystems/MIKASA-Robo/tree/mikasa-robo-rl) project — one zip per
 task (1000 episodes each) on
 [avanturist/mikasa-robo](https://huggingface.co/datasets/avanturist/mikasa-robo).
 Run from the repo root.
