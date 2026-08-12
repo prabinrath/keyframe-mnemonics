@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "keyframe-mnemonics"
+version = "0.1.0"
+description = "Self-Supervised Keyframe Discovery for Horizon-Invariant Behavior Cloning"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "CC-BY-NC-SA-4.0"
+authors = [{ name = "Prabin Kumar Rath", email = "prath4@asu.edu" }]
+
+# Base = synthetic domains (tmaze, add, scattered_copy). torch is unpinned so a
+# preinstalled CUDA build is kept as-is (see README for the CUDA install step).
+dependencies = [
+    "torch",
+    "numpy",
+    "pyyaml",
+    "h5py",
+    "tqdm",
+    "stable-baselines3<2.8",  # 2.9+ needs torch>=2.8
+    "gymnasium",
+    "wandb",
+    "matplotlib",
+]
+
+# grid (ltmb) + mikasa (robot) extras coexist in one env. After install, run
+# problems/mikasa_robo_problem/setup_assets.sh for the ManiSkill assets.
+[project.optional-dependencies]
+grid = ["minigrid", "imageio[ffmpeg]", "LTMB @ git+https://github.com/prabinrath/LTMB.git@master"]
+# mani_skill pinned to 3.0.1 (the 3.0.0b* betas hard-pin gymnasium 0.29.1 / numpy<2); rerun-sdk = viz scripts
+mikasa = ["torchvision", "diffusers", "imageio[ffmpeg]", "mani_skill==3.0.1", "lerobot==0.4.3", "rerun-sdk", "mikasa_robo_suite @ git+https://github.com/prabinrath/MIKASA-Robo.git@hotfix/cube-shape-issues"]
+
+[project.scripts]
+keyframe-mnemonics = "keyframe_mnemonics.train:main"
+
+# Flat layout: the pipeline plus the sibling packages it imports. Run from repo root.
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["keyframe_mnemonics*", "common*", "models*", "problems*", "rollout*"]
+namespaces = false

@@ -1,0 +1,86 @@
+logging: &logging False
+path_prefix: &path_prefix ""
+
+pipeline:
+  proxy_dataset: demos
+  policy_dataset: lerobot
+
+problem:
+  env_id: "RotateStrictPos-v0"
+  split: "train"
+  action_dim: 8
+  buffer_size: &buffer_size 3
+  num_variations: null # use all variations in the training set
+  randomize_reset: True
+  horizon: &horizon 8
+  seed: 42
+  path_prefix: *path_prefix
+
+test_problem_override:
+  num_variations: 100
+  split: "test"
+
+policy_problem_override:
+  buffer_size: 2
+
+selector_env:
+  n_envs: 32
+  action_penalty: 0.0
+  min_loss: 0.00001
+
+selector:
+  total_timesteps: 5000000
+  ent_coef: 0.01
+  n_steps: 1024
+  batch_size: 256
+  n_epochs: 5
+  learning_rate: 0.00005
+  logging: *logging
+  net_arch: [500, 500]
+  features_extractor_kwargs:
+    hidden_dim: 256
+    features_dim: 128
+    use_full_state: True
+
+proxy:
+  batch_size: 128
+  learning_rate: 0.0001
+  weight_decay: 0.0
+  training_epochs: 60
+  save_interval: 10
+  model_kwargs:
+    total_slots: *buffer_size
+    hidden_dim: 512
+    attn_heads: 4
+    num_layers: 4
+    horizon: *horizon
+    use_full_state: True
+
+policy:
+  batch_size: 128
+  learning_rate: 0.00005
+  training_steps: 15000
+  save_interval: 5000
+  weight_decay: 0.05
+  open_loop_steps: 1
+  model_kwargs:
+    policy_type: "single_step_transformer"
+    state_grounded_actions: True
+    total_slots: 3
+    hidden_dim: 1024
+    attn_heads: 16
+    num_layers: 4
+    horizon: 1
+
+evaluator:
+  sr_threshold: 0.95
+  rw_threshold: 0.80
+  logging: *logging
+  evaluation_rollouts: 10
+  path_prefix: *path_prefix
+
+policy_evaluator:
+  sr_threshold: 0.95
+  rw_threshold: 0.80
+  logging: *logging
+  evaluation_rollouts: 20

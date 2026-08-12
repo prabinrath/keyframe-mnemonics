@@ -1,0 +1,1 @@
+mkdir -p ~/.maniskill/data/assets && cd ~/.maniskill/data/assets && wget -q https://huggingface.co/datasets/haosulab/ManiSkill2/resolve/main/data/mani_skill2_ycb.zip && unzip -q mani_skill2_ycb.zip && rm mani_skill2_ycb.zip

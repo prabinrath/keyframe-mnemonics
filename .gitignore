@@ -1,0 +1,9 @@
+**/__pycache__/**
+checkpoints/**
+datasets/**
+*.egg-info/
+build/
+.eggs/
+.vscode/
+wandb/
+**/videos/**

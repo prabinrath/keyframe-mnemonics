@@ -1,0 +1,83 @@
+logging: &logging False
+path_prefix: &path_prefix ""
+
+pipeline:
+  proxy_dataset: rollout
+  policy_dataset: h5
+
+problem:
+  env_list:
+    - "LTMB-Hallway-v0"
+  split: "train"
+  action_dim: 7
+  buffer_size: &buffer_size 2
+  num_variations: 100000
+  randomize_reset: True
+  horizon: &horizon 8
+  path_prefix: *path_prefix
+
+test_problem_override:
+  num_variations: 500
+  split: "test"
+  env_options:
+    length: 100  
+
+policy_problem_override:
+  buffer_size: 1
+
+selector_env:
+  n_envs: 32
+  action_penalty: 0.0
+  min_loss: 0.01
+
+selector:
+  total_timesteps: 200000
+  n_steps: 1024
+  batch_size: 256
+  n_epochs: 5
+  learning_rate: 0.0003
+  logging: *logging
+  features_extractor_kwargs:
+    hidden_dim: 128
+    features_dim: 64
+
+proxy:
+  batch_size: 512
+  learning_rate: 0.001
+  rollout_multiplier: 6
+  training_epochs: 10
+  save_interval: 10
+  cache_path: "datasets/ltmb/proxy_cache"
+  model_kwargs:
+    total_slots: *buffer_size
+    hidden_dim: 128
+    attn_heads: 4
+    entropy_coef: 0.01
+    horizon: *horizon
+
+policy:
+  batch_size: 256
+  learning_rate: 0.0001
+  weight_decay: 0.0
+  training_steps: 100000
+  save_interval: 10000
+  balance_sampler: True
+  cache_path: ""
+  model_kwargs:
+    total_slots: 2 
+    hidden_dim: 64
+    attn_heads: 4
+    entropy_coef: 0.01
+    horizon: 1
+
+evaluator:
+  sr_threshold: 0.99
+  rw_threshold: 0.80
+  logging: *logging
+  evaluation_rollouts: 10
+  path_prefix: *path_prefix
+
+policy_evaluator:
+  sr_threshold: 0.99
+  logging: *logging
+  evaluation_rollouts: 50

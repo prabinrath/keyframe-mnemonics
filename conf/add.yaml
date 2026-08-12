@@ -1,0 +1,66 @@
+path_prefix: &path_prefix ""
+
+pipeline:
+  proxy_dataset: rollout
+  policy_dataset: h5
+
+problem:
+  min_len: 5
+  max_len: 10
+  action_dim: 1
+  buffer_size: &buffer_size 3
+  num_variations: 1000
+  randomize_reset: True
+
+test_problem_override:
+  num_variations: 100
+  min_len: 50
+  max_len: 100
+
+selector_env:
+  n_envs: 4
+  action_penalty: 0.0
+  min_loss: 0.000001
+  reward_scaling_tau: 0.2
+
+selector:
+  total_timesteps: 200000
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  learning_rate: 0.0003
+  features_extractor_kwargs:
+    features_dim: 32
+
+proxy:
+  batch_size: 256
+  learning_rate: 0.001
+  rollout_multiplier: 300
+  training_epochs: 10
+  save_interval: 10
+  cache_path: ""
+  model_kwargs:
+    total_slots: *buffer_size
+    embd_dim: 256
+
+policy:
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 0.0
+  training_steps: 10000  # matches proxy gradient budget: proxy epochs x (num_variations * rollout_multiplier * seq_len / batch_size)
+  save_interval: 10000
+  balance_sampler: False
+  cache_path: ""
+  model_kwargs:
+    total_slots: 4 # buffer_size + current obs
+    embd_dim: 256
+
+evaluator:
+  loss_threshold: 0.0001
+  evaluation_rollouts: 10
+  path_prefix: *path_prefix
+
+policy_evaluator:
+  loss_threshold: 0.0001
+  logging: False
+  evaluation_rollouts: 10
