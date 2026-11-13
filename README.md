@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-lightgrey.svg) <br>
 <p align="center">
   <a href="https://keyframe-mnemonics.github.io">[Project page]</a> •
-  <a href="https://keyframe-mnemonics.github.io">[Paper (coming soon)]</a>
+  <a href="https://arxiv.org/abs/2610.10857">[Paper]</a>
 </p>
 <p align="center">
   <a href="https://prabinrath.github.io/">Prabin Kumar Rath</a><sup>1</sup>,
@@ -146,4 +146,12 @@ Released under **CC BY-NC-SA 4.0** — see [LICENSE](LICENSE).
 [MIKASA-Robo](https://github.com/CognitiveAISystems/MIKASA-Robo) • [ManiSkill](https://github.com/haosulab/ManiSkill) • [LTMB](https://github.com/prabinrath/LTMB) • [MiniGrid](https://github.com/Farama-Foundation/Minigrid) • [LeRobot](https://github.com/huggingface/lerobot) • [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3)
 
 ## 📝 Citation
-BibTeX will be added here on paper release. Until then, please link to the [project page](https://keyframe-mnemonics.github.io).
+If you find this work useful, please cite our [paper](https://arxiv.org/abs/2610.10857):
+```bibtex
+@inproceedings{rath2026keyframe,
+  title     = {Self-Supervised Keyframe Discovery for Horizon-Invariant Behavior Cloning},
+  author    = {Rath, Prabin Kumar and Patil, Omkar and Gopalan, Nakul},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2026}
+}
+```
